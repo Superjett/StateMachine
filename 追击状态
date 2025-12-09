@@ -1,0 +1,80 @@
+public class ChaseState : EnemyState
+{
+    public ChaseState(Enemy enemy) : base(enemy) { }
+
+    public override void Enter()
+    {
+        enemy.canMove = true;
+        enemy.animator.Play("Walk");
+
+        // 记录进入追击状态时的位置作为新的巡逻起点
+        enemy.UpdatePatrolStartPosition();
+
+        Debug.Log($"{enemy.gameObject.name} 进入追击状态");
+    }
+
+    public override void Update()
+    {
+        // 如果目标在攻击范围内，切换到攻击状态
+        if (enemy.IsGoalInAttackRange())
+        {
+            enemy.ChangeState(new AttackState(enemy));
+            return;
+        }
+
+        // 如果目标离开追击范围，返回巡逻状态
+        if (!enemy.IsGoalInChaseRange())
+        {
+            enemy.ChangeState(new PatrolState(enemy));
+            return;
+        }
+
+        // 更新朝向（面向目标）
+        UpdateFacingDirection();
+    }
+
+    public override void FixedUpdate()
+    {
+        if (enemy.Goal != null && enemy.canMove)
+        {
+            // 向目标移动
+            float directionX = enemy.Goal.transform.position.x - enemy.transform.position.x;
+
+            // 保持y轴不变，只在x轴移动
+            Vector2 movement = new Vector2(directionX, 0).normalized * enemy.chaseSpeed * Time.fixedDeltaTime;
+            enemy.transform.position += (Vector3)movement;
+        }
+    }
+
+    // 更新朝向（面向目标）
+    private void UpdateFacingDirection()
+    {
+        if (enemy.Goal != null)
+        {
+            // 根据目标位置更新朝向
+            bool shouldFaceRight = enemy.Goal.transform.position.x > enemy.transform.position.x;
+
+            // 只有当朝向真正改变时才更新
+            if (shouldFaceRight != enemy.isfaceingRight)
+            {
+                enemy.isfaceingRight = shouldFaceRight;
+
+                // 立即应用朝向变化
+                if (enemy.isfaceingRight)
+                {
+                    enemy.transform.localScale = new Vector3(-1, 1, 1);
+                }
+                else
+                {
+                    enemy.transform.localScale = new Vector3(1, 1, 1);
+                }
+            }
+        }
+    }
+
+    public override void OnHurt(float damage)
+    {
+        enemy.currentHealth -= damage;
+        enemy.ChangeState(new HurtState(enemy));
+    }
+}
