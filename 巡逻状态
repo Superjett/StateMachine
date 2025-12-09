@@ -1,0 +1,124 @@
+public class PatrolState : EnemyState
+{
+    private float patrolTimer;
+    private Vector2 patrolStartPosition;
+    private Vector2 patrolDirection;
+
+    public PatrolState(Enemy enemy) : base(enemy)
+    {
+        patrolStartPosition = enemy.transform.position;
+
+        // 初始化巡逻方向，基于当前朝向
+        patrolDirection = enemy.isfaceingRight ? Vector2.right : Vector2.left;
+    }
+
+    public override void Enter()
+    {
+        enemy.canMove = true;
+        enemy.animator.Play("Walk");
+        patrolTimer = enemy.patrolTime;
+
+        // 根据当前朝向设置移动方向
+        enemy.moveSpeed = Mathf.Abs(enemy.moveSpeed) * (enemy.isfaceingRight ? 1 : -1);
+
+        Debug.Log($"{enemy.gameObject.name} 进入巡逻状态，移动方向: {(enemy.moveSpeed > 0 ? "右" : "左")}");
+    }
+
+    public override void Update()
+    {
+        // 更新巡逻计时器
+        patrolTimer -= Time.deltaTime;
+
+        // 巡逻时间到，改变方向
+        if (patrolTimer <= 0)
+        {
+            ChangePatrolDirection();
+            patrolTimer = enemy.patrolTime;
+        }
+
+        // 检测到目标，切换到追击状态
+        if (enemy.IsGoalInChaseRange())
+        {
+            enemy.ChangeState(new ChaseState(enemy));
+            return;
+        }
+
+        // 离开巡逻范围太远，返回巡逻区域
+        if (enemy.IsTooFarFromPatrolStart(patrolStartPosition))
+        {
+            ReturnToPatrolArea();
+        }
+
+        // 更新朝向（基于移动方向）
+        UpdateFacingDirection();
+    }
+
+    public override void FixedUpdate()
+    {
+        if (!enemy.canMove) return;
+
+        // 巡逻移动逻辑
+        Vector2 newPosition = enemy.transform.position;
+        newPosition.x += enemy.moveSpeed * Time.fixedDeltaTime;
+        enemy.transform.position = newPosition;
+    }
+
+    // 改变巡逻方向
+    private void ChangePatrolDirection()
+    {
+        // 反转移动方向
+        enemy.moveSpeed = -enemy.moveSpeed;
+
+        // 更新巡逻方向向量
+        patrolDirection = enemy.moveSpeed > 0 ? Vector2.right : Vector2.left;
+
+        Debug.Log($"{enemy.gameObject.name} 改变巡逻方向: {(enemy.moveSpeed > 0 ? "右" : "左")}");
+    }
+
+    // 更新朝向
+    private void UpdateFacingDirection()
+    {
+        // 根据移动方向更新朝向
+        enemy.isfaceingRight = enemy.moveSpeed > 0;
+
+        // 立即应用朝向变化
+        if (enemy.isfaceingRight)
+        {
+            enemy.transform.localScale = new Vector3(-1, 1, 1);
+        }
+        else
+        {
+            enemy.transform.localScale = new Vector3(1, 1, 1);
+        }
+    }
+
+    private void ReturnToPatrolArea()
+    {
+        // 计算返回方向
+        Vector2 directionToStart = (patrolStartPosition - (Vector2)enemy.transform.position).normalized;
+
+        // 设置移动方向朝向巡逻起点
+        enemy.moveSpeed = Mathf.Abs(enemy.moveSpeed) * (directionToStart.x > 0 ? 1 : -1);
+
+        // 移动到巡逻起始位置附近
+        Vector2 newPosition = enemy.transform.position;
+        newPosition.x += enemy.moveSpeed * Time.deltaTime;
+        enemy.transform.position = newPosition;
+
+        // 接近巡逻起始位置时重置巡逻方向
+        if (Vector2.Distance(enemy.transform.position, patrolStartPosition) < 0.5f)
+        {
+            // 随机选择一个新的巡逻方向
+            bool moveRight = Random.Range(0, 2) == 0;
+            enemy.moveSpeed = Mathf.Abs(enemy.moveSpeed) * (moveRight ? 1 : -1);
+
+            Debug.Log($"{enemy.gameObject.name} 返回巡逻区域，选择新方向: {(moveRight ? "右" : "左")}");
+        }
+    }
+
+    public override void OnHurt(float damage)
+    {
+        enemy.currentHealth -= damage;
+        enemy.ChangeState(new HurtState(enemy));
+    }
+}
