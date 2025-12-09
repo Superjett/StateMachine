@@ -1,0 +1,62 @@
+public class HurtState : EnemyState
+{
+    private float hurtTimer;
+
+    public HurtState(Enemy enemy) : base(enemy)
+    {
+        hurtTimer = enemy.hurtEffectDuration;
+    }
+
+    public override void Enter()
+    {
+        enemy.canMove = false;
+        enemy.animator.Play("Hurt");
+        Debug.Log($"{enemy.gameObject.name} 进入受伤状态");
+
+        // 触发受伤效果
+        enemy.StartCoroutine(HurtFlashEffect());
+    }
+
+    public override void Update()
+    {
+        hurtTimer -= Time.deltaTime;
+
+        // 受伤状态结束，返回到之前的状态
+        if (hurtTimer <= 0)
+        {
+            // 检查血量是否归零
+            if (enemy.currentHealth <= 0)
+            {
+                enemy.ChangeState(new DeadState(enemy));
+                return;
+            }
+
+            // 根据当前情况返回到合适的状态
+            if (enemy.IsGoalInAttackRange())
+            {
+                enemy.ChangeState(new AttackState(enemy));
+            }
+            else if (enemy.IsGoalInChaseRange())
+            {
+                enemy.ChangeState(new ChaseState(enemy));
+            }
+            else
+            {
+                enemy.ChangeState(new PatrolState(enemy));
+            }
+        }
+    }
+
+    private IEnumerator HurtFlashEffect()
+    {
+        SpriteRenderer sprite = enemy.GetComponent<SpriteRenderer>();
+        if (sprite != null)
+        {
+            Color originalColor = sprite.color;
+            sprite.color = Color.red;
+            yield return new WaitForSeconds(0.1f);
+            sprite.color = originalColor;
+        }
+    }
+
+}
