@@ -1,0 +1,20 @@
+public class DeadState : EnemyState
+{
+    public DeadState(Enemy enemy) : base(enemy) { }
+
+    public override void Enter()
+    {
+        enemy.canMove = false;
+        enemy.isDead = true;
+        enemy.animator.Play("Dead");
+        Debug.Log($"{enemy.gameObject.name} 进入死亡状态");
+
+        // 禁用碰撞器
+        Collider2D collider = enemy.GetComponent<Collider2D>();
+        if (collider != null)
+            collider.enabled = false;
+
+        // 销毁游戏对象
+        GameObject.Destroy(enemy.gameObject, 1f);
+    }
+}
