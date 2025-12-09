@@ -1,0 +1,49 @@
+public class AttackState : EnemyState
+{
+    private float attackCooldown = 1f;
+    private float currentCooldown;
+
+    public AttackState(Enemy enemy) : base(enemy) { }
+
+    public override void Enter()
+    {
+        enemy.canMove = false;
+        enemy.animator.Play("Attack");
+        currentCooldown = attackCooldown;
+        Debug.Log($"{enemy.gameObject.name} 进入攻击状态");
+
+        // 执行攻击逻辑
+        enemy.EnemyAttack();
+    }
+
+    public override void Update()
+    {
+        currentCooldown -= Time.deltaTime;
+
+        // 攻击冷却结束，再次攻击
+        if (currentCooldown <= 0)
+        {
+            enemy.animator.Play("Attack");
+            enemy.EnemyAttack();
+            currentCooldown = attackCooldown;
+        }
+
+        // 如果目标离开攻击范围但还在追击范围内，切换到追击状态
+        if (!enemy.IsGoalInAttackRange() && enemy.IsGoalInChaseRange())
+        {
+            enemy.ChangeState(new ChaseState(enemy));
+        }
+        // 如果目标离开追击范围，切换到巡逻状态
+        else if (!enemy.IsGoalInChaseRange())
+        {
+            enemy.ChangeState(new PatrolState(enemy));
+        }
+    }
+
+    public override void OnHurt(float damage)
+    {
+        enemy.currentHealth -= damage;
+        enemy.ChangeState(new HurtState(enemy));
+    }
+
+}
