@@ -1,0 +1,41 @@
+public class IdleState : EnemyState
+{
+    private float idleTimer;
+    public IdleState(Enemy enemy) : base(enemy) { }
+
+    public override void Enter()
+    {
+        enemy.canMove = false;
+        enemy.animator.Play("Idle");
+        idleTimer = enemy.idleTime;
+
+        // 初始化巡逻起点
+        enemy.UpdatePatrolStartPosition();
+
+        Debug.Log($"{enemy.gameObject.name} 进入待机状态");
+    }
+
+    public override void Update()
+    {
+        idleTimer -= Time.deltaTime;
+
+        // 待机时间结束，切换到巡逻状态
+        if (idleTimer <= 0)
+        {
+            enemy.ChangeState(new PatrolState(enemy));
+            return;
+        }
+
+        // 检测到目标，切换到追击状态
+        if (enemy.IsGoalInChaseRange())
+        {
+            enemy.ChangeState(new ChaseState(enemy));
+        }
+    }
+
+    public override void OnHurt(float damage)
+    {
+        enemy.currentHealth -= damage;
+        enemy.ChangeState(new HurtState(enemy));
+    }
+}
